@@ -7,13 +7,38 @@
 # get events from the current calendar
 # sync with iCloud
 
-#import icalendar
-import urllib.request
 import logging
 
 from pyicloud.pyicloud import PyiCloudService
-from lib.yaml import YAMLConfig
 from datetime import datetime, timedelta
+
+import lib.ics
+from lib.yaml import YAMLConfig
+
+#region CLASS_FORMATTER
+class CustomFormatter(logging.Formatter): 
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    blue = "\x1b[34;20m"
+    light_blue = "\x1b[36;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    format = '[%(asctime)s] %(name)s (%(levelname)s): %(message)s'
+
+    FORMATS = {
+        logging.DEBUG: grey + format + reset,
+        logging.INFO: light_blue + format + reset,
+        logging.WARNING: yellow + format + reset,
+        logging.ERROR: red + format + reset,
+        logging.CRITICAL: bold_red + format + reset
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+#endregion
 
 #region CONSTS
 YAML_SECTION_ICLOUD = "icloud-calendar"
@@ -22,6 +47,13 @@ YAML_KEY_ICLOUD_PASS = "pass"
 YAML_SECTION_ORIGIN_CALENDAR = "origin-calendar-"
 YAML_KEY_ORIGIN_CALENDAR_TAG = "tag"
 YAML_KEY_ORIGIN_CALENDAR_URL = "url"
+YAML_KEY_ORIGIN_CALENDAR_TYPE = "type"
+YAML_KEY_ORIGIN_CALENDAR_TEMP_FILE_NAME = "temp-file-name"
+
+CALENDAR_TYPE_ICS = "ics"
+CALENDAR_TYPE_GOOGLE_API = "google-api"
+ 
+DATE_FORMAT_STRING = "%Y-%m-%d %Z"
 #endregion
 
 #region LOGGER_SETTINGS
@@ -29,8 +61,7 @@ logger = logging.getLogger("cal-sync")
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('[%(asctime)s] %(name)s (%(levelname)s): %(message)s')
-ch.setFormatter(formatter)
+ch.setFormatter(CustomFormatter())
 logger.addHandler(ch)
 #endregion
 
@@ -66,10 +97,10 @@ if icloud_service.requires_2fa:
             logger.warning("Failed to request trust. You will likely be prompted for the code again in the coming weeks")
 
 # setup the dates to go find the events
-tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+tomorrow = (datetime.now().astimezone() + timedelta(days=1)).strftime(DATE_FORMAT_STRING)
 # get events just for tomorrow
-events_from = datetime.strptime(tomorrow, "%Y-%m-%d")
-events_to = datetime.strptime(tomorrow, "%Y-%m-%d") + timedelta(hours=23, minutes=59, seconds=59)
+events_from = datetime.strptime(tomorrow, DATE_FORMAT_STRING).astimezone()
+events_to = datetime.strptime(tomorrow, DATE_FORMAT_STRING).astimezone() + timedelta(hours=23, minutes=59, seconds=59)
 
 # fetch tomorrow's events from iCloud calendar
 logger.info("Getting tomorrow's events from iCloud calendar")
@@ -79,19 +110,41 @@ logger.info("Getting origin calendars")
 
 EoC = False
 calendar_count = 0
+finished_with_error = False
 
 # EoC = End of Calendars
 while EoC == False:
     try:
-        calendar_tag = cal_sync_config.read_yaml_setting(YAML_SECTION_ORIGIN_CALENDAR + str(calendar_count), YAML_KEY_ORIGIN_CALENDAR_TAG)
+        calendar_type = cal_sync_config.read_yaml_setting(YAML_SECTION_ORIGIN_CALENDAR + str(calendar_count), YAML_KEY_ORIGIN_CALENDAR_TYPE)
     except Exception as err:
         EoC = True
 
     if EoC == False:
-        print(f"tag: {calendar_tag}")
-        print(f"url: {cal_sync_config.read_yaml_setting(YAML_SECTION_ORIGIN_CALENDAR + str(calendar_count), YAML_KEY_ORIGIN_CALENDAR_URL)}")
-    
+        if (calendar_type == CALENDAR_TYPE_ICS):
+            calendar_url = cal_sync_config.read_yaml_setting(YAML_SECTION_ORIGIN_CALENDAR + str(calendar_count), YAML_KEY_ORIGIN_CALENDAR_URL)
+
+            logger.info(f"Downloading calendar from {calendar_url}")
+
+            try:
+                temp_ics = lib.ics.download_calendar(calendar_url)
+            except Exception as err:
+                logger.error(f"Failed to download calendar: {err}")
+                finished_with_error = True
+                temp_ics = ""
+
+            filtered_events = lib.ics.filter_events(temp_ics, events_from, events_to)
+
+            print(f"Filtered events: {filtered_events}")
+
+            calendar_tag = cal_sync_config.read_yaml_setting(YAML_SECTION_ORIGIN_CALENDAR + str(calendar_count), YAML_KEY_ORIGIN_CALENDAR_TAG)
+
+        elif (calendar_type == CALENDAR_TYPE_GOOGLE_API):
+            #TODO: implement Google API calendar
+            pass
+
     calendar_count += 1
 
-# fileICS = open(icsFile, "rb")
-# icalendar.Calendar.from_ical(fileICS.read())
+if finished_with_error == True:
+    logger.error("Finished with error")
+else:
+    logger.info("Completed")

@@ -5,13 +5,11 @@ class YAMLConfig:
 
     @property
     def yaml_file(self):
-        global __yaml_file
-        return __yaml_file
+        return self.__yaml_file
 
     @yaml_file.setter
     def yaml_file(self, value):
-        global __yaml_file
-        __yaml_file = value
+        self.__yaml_file = value
 
     def read_yaml_setting(self, section:str, key:str):
         with open(self.yaml_file) as local_yaml_file:

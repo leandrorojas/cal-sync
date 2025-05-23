@@ -1,8 +1,14 @@
+cal-sync-config:
+  excluded-days: 
 icloud-calendar:
-  user:
-  pass:
-  name:
-origin-calendar-N:
+  user: 
+  pass: 
+  name: 
+origin-calendar-0:
   type: 
-  tag:
+  tag: 
+  url: 
+origin-calendar-1:
+  type: 
+  tag: 
   url: 
