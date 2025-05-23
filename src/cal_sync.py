@@ -85,8 +85,7 @@ while EoC == False:
     try:
         calendar_tag = cal_sync_config.read_yaml_setting(YAML_SECTION_ORIGIN_CALENDAR + str(calendar_count), YAML_KEY_ORIGIN_CALENDAR_TAG)
     except Exception as err:
-        logger.error(f"Failed to read calendar {calendar_count} from YAML file: {err}")
-        break
+        EoC = True
 
     if EoC == False:
         print(f"tag: {calendar_tag}")
