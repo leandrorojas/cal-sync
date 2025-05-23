@@ -17,8 +17,4 @@ class YAMLConfig:
         with open(self.yaml_file) as local_yaml_file:
             yaml_config = yaml.safe_load(local_yaml_file)
 
-            try:
-                return yaml_config[section][key]
-            except Exception as err:
-                print(f"Section: {section}, Key: {key} not found in YAML file. Error reading YAML file ({self.yaml_file}): {err}")
-                return None
+            return yaml_config[section][key]
