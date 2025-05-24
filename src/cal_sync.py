@@ -40,6 +40,14 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 #endregion
 
+#region FUNCTIONS
+def is_friday(to_check):
+    return to_check.weekday() == 4
+
+def get_next_friday(to_check):
+    return to_check + datetime.timedelta( (4-to_check.weekday()) % 7 )
+#endregion
+
 #region CONSTS
 YAML_SECTION_ICLOUD = "icloud-calendar"
 YAML_KEY_ICLOUD_USER = "user"
@@ -96,8 +104,11 @@ if icloud_service.requires_2fa:
         if not result:
             logger.warning("Failed to request trust. You will likely be prompted for the code again in the coming weeks")
 
+
+tomorrow = datetime.strptime("2025-05-27 -03", DATE_FORMAT_STRING).astimezone().strftime(DATE_FORMAT_STRING)
+
 # setup the dates to go find the events
-tomorrow = (datetime.now().astimezone() + timedelta(days=1)).strftime(DATE_FORMAT_STRING)
+#tomorrow = (datetime.now().astimezone() + timedelta(days=1)).strftime(DATE_FORMAT_STRING)
 # get events just for tomorrow
 events_from = datetime.strptime(tomorrow, DATE_FORMAT_STRING).astimezone()
 events_to = datetime.strptime(tomorrow, DATE_FORMAT_STRING).astimezone() + timedelta(hours=23, minutes=59, seconds=59)
