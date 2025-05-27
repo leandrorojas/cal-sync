@@ -12,7 +12,7 @@ def download_calendar(url:str) -> str:
     try:
         calendar_remote_url = urllib.request.urlopen(url)
     except Exception as err:
-        raise err
+        raise ValueError(f"Failed to download calendar from {url}: {err}")
 
     if calendar_remote_url is not None:
         temp_dir = tempfile.gettempdir()
@@ -24,7 +24,7 @@ def download_calendar(url:str) -> str:
             ics_file.write(calendar_remote_url.read())
             ics_file.close()
         except Exception as err:
-            raise err
+            raise OSError(f"Failed to write to file {temp_full_path}: {err}")
 
     return temp_full_path
 
@@ -34,8 +34,7 @@ def __normalize_date(date) -> datetime:
         return_date = datetime.datetime.combine(date, datetime.time.min).astimezone()
     return return_date
 
-def filter_events(ics_file, dt_from, dt_to) -> list:
-
+def filter_events_by_date(ics_file, dt_from, dt_to) -> list:
     try:
         ical_file = open(ics_file, "r")
     except Exception as err:
